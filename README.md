@@ -1,67 +1,134 @@
 # Proxmox MCP Server
 
-Serveur MCP (Model Context Protocol) permettant à Claude d'interagir avec une infrastructure Proxmox VE pour la gestion de VMs, conteneurs LXC et ressources de cluster.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
-## Fonctionnalités
+A Model Context Protocol (MCP) server that enables Claude to manage Proxmox VE infrastructure — VMs, LXC containers, snapshots, storage, and more.
 
-- **Gestion des nœuds** : Lister les nœuds du cluster, consulter les métriques (CPU, RAM, disque)
-- **Gestion des VMs QEMU** : Lister, démarrer, arrêter, redémarrer, supprimer
-- **Gestion des conteneurs LXC** : Mêmes opérations que les VMs
-- **Snapshots** : Créer, lister, supprimer, restaurer des snapshots
-- **Stockage** : Consulter les pools de stockage et leur contenu
-- **Tâches** : Suivre les tâches Proxmox en cours et passées
+## Features
+
+- **Node Management** — List cluster nodes, monitor CPU/RAM/disk metrics
+- **VM & Container Control** — Start, stop, reboot, destroy QEMU VMs and LXC containers
+- **Snapshots** — Create, list, delete, and rollback snapshots
+- **Storage** — Browse storage pools and content (ISOs, backups, templates)
+- **Task Monitoring** — Track Proxmox tasks in real-time
+- **SSH Access** — Execute commands directly on Proxmox host
+- **User Management** — Create, update, delete Proxmox users
+- **Guest Agent** — Execute commands inside VMs via QEMU Guest Agent
+- **Docker Ready** — Run as a container with minimal configuration
+
+---
+
+## Quick Start
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/BenjaminDuthe/proxmox-mcp.git
+cd proxmox-mcp
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your Proxmox credentials:
+
+```env
+PROXMOX_HOST=192.168.1.10
+PROXMOX_TOKEN_ID=root@pam!mcp
+PROXMOX_TOKEN_SECRET=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PROXMOX_VERIFY_SSL=false
+```
+
+### 3. Run with Docker (recommended)
+
+```bash
+docker compose up -d
+```
+
+Or install locally:
+
+```bash
+pip install -e .
+python -m proxmox_mcp.server
+```
+
+---
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
-- Python 3.11+
-- Accès à un serveur Proxmox VE avec API activée
+- Python 3.11+ (local install) or Docker
+- Proxmox VE 7.x or 8.x with API access
+- API Token with appropriate permissions
 
-### Installation locale
+### Local Installation
 
 ```bash
-# Cloner le projet
-git clone <repo-url>
-cd proxmox-mcp
-
-# Installer en mode développement
+# Install package
 pip install -e ".[dev]"
 
-# Copier et configurer les variables d'environnement
-cp .env.example .env
-# Éditer .env avec vos paramètres Proxmox
+# Run server
+python -m proxmox_mcp.server
 ```
+
+### Docker Installation
+
+```bash
+# Build image
+docker build -t proxmox-mcp .
+
+# Run with environment file
+docker run --rm -it --env-file .env proxmox-mcp
+```
+
+For SSH support, mount your SSH key:
+
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -e PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_rsa \
+  -v ~/.ssh/id_proxmox:/home/mcp/.ssh/id_rsa:ro \
+  proxmox-mcp
+```
+
+---
 
 ## Configuration
 
-### Variables d'environnement
+### Environment Variables
 
-| Variable | Description | Obligatoire | Défaut |
-|----------|-------------|-------------|--------|
-| `PROXMOX_HOST` | IP ou hostname du serveur | Oui | - |
-| `PROXMOX_PORT` | Port de l'API | Non | 8006 |
-| `PROXMOX_TOKEN_ID` | ID du token API | Oui* | - |
-| `PROXMOX_TOKEN_SECRET` | Secret du token | Oui* | - |
-| `PROXMOX_USER` | Utilisateur Proxmox | Oui* | - |
-| `PROXMOX_PASSWORD` | Mot de passe | Oui* | - |
-| `PROXMOX_VERIFY_SSL` | Vérifier le certificat SSL | Non | false |
-| `PROXMOX_TIMEOUT` | Timeout en secondes | Non | 30 |
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `PROXMOX_HOST` | Proxmox server IP or hostname | Yes | — |
+| `PROXMOX_PORT` | API port | No | `8006` |
+| `PROXMOX_TOKEN_ID` | API token ID (`user@realm!token`) | Yes* | — |
+| `PROXMOX_TOKEN_SECRET` | API token secret | Yes* | — |
+| `PROXMOX_USER` | Username (alternative to token) | Yes* | — |
+| `PROXMOX_PASSWORD` | Password (alternative to token) | Yes* | — |
+| `PROXMOX_VERIFY_SSL` | Verify SSL certificate | No | `false` |
+| `PROXMOX_TIMEOUT` | Request timeout (seconds) | No | `30` |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH private key | No | — |
+| `PROXMOX_SSH_USER` | SSH username | No | `root` |
 
-*Soit token (recommandé), soit user/password requis.
+*Either token OR user/password required. Token is recommended.
 
-### Créer un token API dans Proxmox
+### Creating an API Token in Proxmox
 
-1. Connectez-vous à l'interface web Proxmox
-2. Allez dans **Datacenter** > **Permissions** > **API Tokens**
-3. Cliquez sur **Add**
-4. Sélectionnez l'utilisateur, donnez un nom au token
-5. **Décochez** "Privilege Separation" pour hériter des droits de l'utilisateur
-6. Copiez le token secret (affiché une seule fois)
+1. Go to **Datacenter** → **Permissions** → **API Tokens**
+2. Click **Add**
+3. Select user, enter token name (e.g., `mcp`)
+4. **Uncheck** "Privilege Separation" to inherit user permissions
+5. Copy the token secret (shown only once)
 
-### Configuration Claude Desktop
+### Claude Desktop Configuration
 
-Ajoutez dans `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) ou équivalent :
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
@@ -69,11 +136,11 @@ Ajoutez dans `~/Library/Application Support/Claude/claude_desktop_config.json` (
     "proxmox": {
       "command": "python",
       "args": ["-m", "proxmox_mcp.server"],
-      "cwd": "/chemin/vers/proxmox-mcp",
+      "cwd": "/path/to/proxmox-mcp",
       "env": {
         "PROXMOX_HOST": "192.168.1.10",
         "PROXMOX_TOKEN_ID": "root@pam!mcp",
-        "PROXMOX_TOKEN_SECRET": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "PROXMOX_TOKEN_SECRET": "your-token-secret",
         "PROXMOX_VERIFY_SSL": "false"
       }
     }
@@ -81,93 +148,180 @@ Ajoutez dans `~/Library/Application Support/Claude/claude_desktop_config.json` (
 }
 ```
 
-## Utilisation
+With Docker:
 
-### Lancer le serveur manuellement
-
-```bash
-python -m proxmox_mcp.server
+```json
+{
+  "mcpServers": {
+    "proxmox": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "--env-file", "/path/to/.env", "proxmox-mcp"]
+    }
+  }
+}
 ```
 
-### Tools disponibles
+---
 
-#### Lecture (safe)
+## Available Tools
+
+### Nodes
 
 | Tool | Description |
 |------|-------------|
-| `list_nodes` | Liste les nœuds du cluster avec métriques |
-| `get_node_status` | Détails d'un nœud spécifique |
-| `list_vms` | Liste les VMs QEMU |
-| `list_containers` | Liste les conteneurs LXC |
-| `get_vm_details` | Configuration complète d'une VM |
-| `get_container_details` | Configuration complète d'un conteneur |
-| `list_snapshots` | Liste les snapshots d'une VM/LXC |
-| `list_storage` | Liste les pools de stockage |
-| `get_storage_content` | Contenu d'un storage |
-| `list_tasks` | Tâches récentes |
-| `get_task_status` | Statut d'une tâche |
+| `list_nodes` | List all cluster nodes with CPU/RAM/disk metrics |
+| `get_node_status` | Get detailed status of a specific node |
 
-#### Actions
+### Virtual Machines (QEMU)
 
 | Tool | Description |
 |------|-------------|
-| `start_vm` | Démarre une VM/LXC |
-| `stop_vm` | Arrêt forcé |
-| `shutdown_vm` | Arrêt gracieux (ACPI) |
-| `reboot_vm` | Redémarrage |
-| `create_snapshot` | Créer un snapshot |
-| `delete_snapshot` | Supprimer un snapshot |
-| `rollback_snapshot` | Restaurer un snapshot |
+| `list_vms` | List all VMs with status and resource usage |
+| `get_vm_details` | Get full VM configuration |
+| `start_vm` | Start a VM |
+| `stop_vm` | Force stop a VM |
+| `shutdown_vm` | Graceful shutdown (ACPI) |
+| `reboot_vm` | Reboot a VM |
+| `destroy_vm` | **Permanently delete** a VM and its disks |
 
-#### Destructif
+### Containers (LXC)
 
 | Tool | Description |
 |------|-------------|
-| `destroy_vm` | Supprime définitivement une VM/LXC |
+| `list_containers` | List all LXC containers |
+| `get_container_details` | Get full container configuration |
 
-## Développement
+*LXC containers support the same start/stop/shutdown/reboot/destroy operations as VMs.*
 
-### Lancer les tests
+### Snapshots
 
-```bash
-# Tous les tests
-pytest -v
+| Tool | Description |
+|------|-------------|
+| `list_snapshots` | List snapshots of a VM/container |
+| `create_snapshot` | Create a new snapshot |
+| `delete_snapshot` | Delete a snapshot |
+| `rollback_snapshot` | Restore VM/container to a snapshot |
 
-# Avec couverture
-pytest -v --cov=proxmox_mcp
+### Storage
 
-# Un fichier spécifique
-pytest tests/test_tools/test_vms.py -v
-```
+| Tool | Description |
+|------|-------------|
+| `list_storage` | List storage pools with usage stats |
+| `get_storage_content` | List content (ISOs, backups, images) |
 
-### Linting et formatage
+### Tasks
 
-```bash
-# Vérifier le code
-ruff check src/
+| Tool | Description |
+|------|-------------|
+| `list_tasks` | List recent Proxmox tasks |
+| `get_task_status` | Get detailed task status by UPID |
 
-# Formater le code
-ruff format src/
-```
+### SSH (Proxmox Host)
+
+| Tool | Description |
+|------|-------------|
+| `ssh_execute` | Execute command on Proxmox host |
+| `ssh_read_file` | Read file from Proxmox host |
+| `ssh_write_file` | Write file to Proxmox host |
+| `fix_apt_repos` | Fix APT repos for non-subscription |
+
+### Users
+
+| Tool | Description |
+|------|-------------|
+| `list_users` | List all Proxmox users |
+| `get_user` | Get user details and tokens |
+| `create_user` | Create a new user |
+| `update_user` | Update user properties |
+| `delete_user` | Delete a user |
+
+### Guest Agent (VM)
+
+| Tool | Description |
+|------|-------------|
+| `vm_exec` | Execute command inside VM |
+| `vm_exec_status` | Get async command result |
+| `vm_exec_sync` | Execute command and wait for result |
+| `vm_file_read` | Read file from inside VM |
+| `vm_file_write` | Write file inside VM (protected paths) |
+
+---
 
 ## Architecture
 
 ```
 src/proxmox_mcp/
-├── server.py          # Point d'entrée MCP, registration des tools
-├── client.py          # Client API Proxmox async (httpx)
-├── config.py          # Configuration via variables d'environnement
-├── models.py          # Modèles Pydantic pour entrées/sorties
-├── exceptions.py      # Exceptions personnalisées
-└── tools/             # Implémentation des tools par domaine
+├── server.py          # MCP server entry point
+├── client.py          # Async Proxmox API client (httpx)
+├── ssh_client.py      # Async SSH client (asyncssh)
+├── config.py          # Environment-based configuration
+├── models.py          # Pydantic models
+├── exceptions.py      # Custom exceptions
+└── tools/             # Tool implementations
     ├── nodes.py
     ├── vms.py
     ├── containers.py
     ├── snapshots.py
     ├── storage.py
-    └── tasks.py
+    ├── tasks.py
+    ├── ssh.py
+    └── users.py
 ```
 
-## Licence
+---
 
-MIT
+## Development
+
+### Install dev dependencies
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Run tests
+
+```bash
+pytest -v --cov=proxmox_mcp
+```
+
+### Lint and format
+
+```bash
+ruff check src/
+ruff format src/
+```
+
+---
+
+## Security Notes
+
+- **Never commit `.env`** — It contains sensitive credentials
+- **Use API tokens** — Prefer tokens over user/password
+- **Limit token permissions** — Create dedicated tokens with minimal required permissions
+- **Protected paths** — `vm_file_write` blocks writes to sensitive files (`/etc/shadow`, `/etc/passwd`, etc.)
+
+---
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- [Proxmox VE](https://www.proxmox.com/) — Powerful open-source virtualization platform
+- [Model Context Protocol](https://modelcontextprotocol.io/) — Anthropic's protocol for AI tool integration
+- [Claude](https://claude.ai/) — AI assistant by Anthropic
