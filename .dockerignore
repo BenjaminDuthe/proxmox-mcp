@@ -1,0 +1,32 @@
+# Credentials - NEVER include in image
+.env
+
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Development
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation (keep README.md for hatchling)
+CLAUDE.md
+CHANGELOG.md
+
+# Plans
+.claude/

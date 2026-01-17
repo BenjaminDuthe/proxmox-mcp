@@ -1,0 +1,24 @@
+services:
+  proxmox-mcp:
+    build: .
+    image: proxmox-mcp:latest
+    container_name: proxmox-mcp
+
+    # MCP uses stdio for communication
+    stdin_open: true
+    tty: true
+
+    # Environment variables (loaded from .env file)
+    env_file:
+      - .env
+
+    # Override SSH key path for container
+    environment:
+      - PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox_mcp
+
+    # Mount SSH key read-only
+    volumes:
+      - ~/.ssh/id_proxmox_mcp:/home/mcp/.ssh/id_proxmox_mcp:ro
+
+    # Restart policy
+    restart: unless-stopped
