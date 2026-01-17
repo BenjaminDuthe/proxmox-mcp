@@ -20,115 +20,239 @@ A Model Context Protocol (MCP) server that enables Claude to manage Proxmox VE i
 
 ---
 
-## Quick Start
+## Quick Start with Docker Compose
 
-### 1. Clone the repository
+### Step 1: Clone the repository
 
 ```bash
 git clone https://github.com/BenjaminDuthe/proxmox-mcp.git
 cd proxmox-mcp
 ```
 
-### 2. Configure environment
+### Step 2: Create your configuration file
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your Proxmox credentials:
+### Step 3: Edit `.env` with your Proxmox credentials
+
+Open `.env` in your editor and replace the placeholder values:
 
 ```env
-PROXMOX_HOST=192.168.1.10
-PROXMOX_TOKEN_ID=root@pam!mcp
-PROXMOX_TOKEN_SECRET=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PROXMOX_VERIFY_SSL=false
+# ⚠️ REQUIRED - Replace these values with your own
+
+PROXMOX_HOST=<YOUR_PROXMOX_IP>           # Example: 192.168.1.10
+PROXMOX_PORT=8006                         # Default Proxmox port (usually no change needed)
+
+PROXMOX_TOKEN_ID=<YOUR_TOKEN_ID>          # Example: root@pam!mcp
+PROXMOX_TOKEN_SECRET=<YOUR_TOKEN_SECRET>  # Example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+PROXMOX_VERIFY_SSL=false                  # Set to 'true' if you have valid SSL certificates
+PROXMOX_TIMEOUT=30
+
+# 📌 OPTIONAL - For SSH access to Proxmox host
+
+PROXMOX_SSH_USER=root
+PROXMOX_SSH_KEY_PATH=<PATH_TO_YOUR_SSH_KEY>  # Example: ~/.ssh/id_rsa
 ```
 
-### 3. Run with Docker (recommended)
+> **📋 Legend:**
+> - `<YOUR_PROXMOX_IP>` → Your Proxmox server IP address (e.g., `192.168.1.10`)
+> - `<YOUR_TOKEN_ID>` → API token ID created in Proxmox (e.g., `root@pam!mytoken`)
+> - `<YOUR_TOKEN_SECRET>` → The secret shown when creating the token (UUID format)
+> - `<PATH_TO_YOUR_SSH_KEY>` → Path to your SSH private key (optional, for SSH tools)
+
+### Step 4: Generate SSH key (optional, for SSH tools)
+
+If you want to use SSH tools (`ssh_execute`, `ssh_read_file`, etc.):
+
+```bash
+# Generate a dedicated SSH key
+ssh-keygen -t ed25519 -f ~/.ssh/id_proxmox -N "" -C "proxmox-mcp"
+
+# Copy the public key to your Proxmox server
+ssh-copy-id -i ~/.ssh/id_proxmox.pub root@<YOUR_PROXMOX_IP>
+```
+
+Then update `.env`:
+```env
+PROXMOX_SSH_KEY_PATH=~/.ssh/id_proxmox
+```
+
+### Step 5: Start with Docker Compose
 
 ```bash
 docker compose up -d
 ```
 
-Or install locally:
+**What happens:**
+1. Docker builds the `proxmox-mcp` image from the Dockerfile
+2. The container starts with your `.env` configuration
+3. SSH key is mounted read-only inside the container
+4. MCP server is ready to receive commands
+
+### Step 6: Check it's running
 
 ```bash
-pip install -e .
-python -m proxmox_mcp.server
+# View logs
+docker compose logs
+
+# Expected output:
+# proxmox-mcp  | INFO - Configuration loaded: 192.168.1.10:8006
+# proxmox-mcp  | INFO - Proxmox client connected
+# proxmox-mcp  | INFO - MCP server ready
+```
+
+### Step 7: Stop/Restart
+
+```bash
+# Stop
+docker compose down
+
+# Restart (after .env changes)
+docker compose up -d --force-recreate
+
+# Rebuild (after code changes)
+docker compose up -d --build
 ```
 
 ---
 
-## Installation
+## Docker Compose File Explained
 
-### Prerequisites
+The `docker-compose.yml` file:
 
-- Python 3.11+ (local install) or Docker
-- Proxmox VE 7.x or 8.x with API access
-- API Token with appropriate permissions
+```yaml
+services:
+  proxmox-mcp:
+    build: .                    # Build image from local Dockerfile
+    image: proxmox-mcp:latest   # Image name
+    container_name: proxmox-mcp # Container name
 
-### Local Installation
+    stdin_open: true            # Keep STDIN open (required for MCP protocol)
+    tty: true                   # Allocate pseudo-TTY
 
-```bash
-# Install package
-pip install -e ".[dev]"
+    env_file:
+      - .env                    # Load environment variables from .env file
 
-# Run server
-python -m proxmox_mcp.server
+    environment:
+      # Override SSH key path for container filesystem
+      - PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox
+
+    volumes:
+      # Mount your SSH key inside the container (read-only)
+      - ~/.ssh/id_proxmox:/home/mcp/.ssh/id_proxmox:ro
+
+    restart: unless-stopped     # Auto-restart on failure
 ```
 
-### Docker Installation
+**Key points:**
+- `stdin_open` + `tty` are required because MCP uses stdio for communication
+- `.env` file is loaded automatically (never committed to git)
+- SSH key is mounted at `/home/mcp/.ssh/` (container runs as non-root `mcp` user)
+- `:ro` means read-only (security best practice)
+
+---
+
+## Alternative: Run with Docker (without Compose)
 
 ```bash
-# Build image
+# Build the image
 docker build -t proxmox-mcp .
 
-# Run with environment file
+# Run with .env file
 docker run --rm -it --env-file .env proxmox-mcp
-```
 
-For SSH support, mount your SSH key:
-
-```bash
+# Run with SSH key mounted
 docker run --rm -it \
   --env-file .env \
-  -e PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_rsa \
-  -v ~/.ssh/id_proxmox:/home/mcp/.ssh/id_rsa:ro \
+  -e PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox \
+  -v ~/.ssh/id_proxmox:/home/mcp/.ssh/id_proxmox:ro \
   proxmox-mcp
 ```
 
 ---
 
-## Configuration
+## Alternative: Local Installation (without Docker)
+
+```bash
+# Install Python package
+pip install -e ".[dev]"
+
+# Run MCP server
+python -m proxmox_mcp.server
+```
+
+---
+
+## Configuration Reference
 
 ### Environment Variables
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `PROXMOX_HOST` | Proxmox server IP or hostname | Yes | — |
+| `PROXMOX_HOST` | Proxmox server IP or hostname | **Yes** | — |
 | `PROXMOX_PORT` | API port | No | `8006` |
-| `PROXMOX_TOKEN_ID` | API token ID (`user@realm!token`) | Yes* | — |
-| `PROXMOX_TOKEN_SECRET` | API token secret | Yes* | — |
-| `PROXMOX_USER` | Username (alternative to token) | Yes* | — |
-| `PROXMOX_PASSWORD` | Password (alternative to token) | Yes* | — |
+| `PROXMOX_TOKEN_ID` | API token ID (`user@realm!token`) | **Yes*** | — |
+| `PROXMOX_TOKEN_SECRET` | API token secret (UUID) | **Yes*** | — |
+| `PROXMOX_USER` | Username (alternative to token) | **Yes*** | — |
+| `PROXMOX_PASSWORD` | Password (alternative to token) | **Yes*** | — |
 | `PROXMOX_VERIFY_SSL` | Verify SSL certificate | No | `false` |
 | `PROXMOX_TIMEOUT` | Request timeout (seconds) | No | `30` |
 | `PROXMOX_SSH_KEY_PATH` | Path to SSH private key | No | — |
 | `PROXMOX_SSH_USER` | SSH username | No | `root` |
 
-*Either token OR user/password required. Token is recommended.
+> **\*** Either `TOKEN_ID` + `TOKEN_SECRET` **OR** `USER` + `PASSWORD` is required. Token is recommended.
 
 ### Creating an API Token in Proxmox
 
-1. Go to **Datacenter** → **Permissions** → **API Tokens**
-2. Click **Add**
-3. Select user, enter token name (e.g., `mcp`)
-4. **Uncheck** "Privilege Separation" to inherit user permissions
-5. Copy the token secret (shown only once)
+1. Open Proxmox web interface (https://your-proxmox:8006)
+2. Go to **Datacenter** → **Permissions** → **API Tokens**
+3. Click **Add**
+4. Fill in:
+   - **User**: `root@pam` (or your user)
+   - **Token ID**: `mcp` (or any name you want)
+   - **Privilege Separation**: ⚠️ **Uncheck this** to inherit user permissions
+5. Click **Add**
+6. **Copy the token secret immediately** (shown only once!)
 
-### Claude Desktop Configuration
+Your token ID will be: `root@pam!mcp`
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+---
+
+## Claude Desktop Configuration
+
+### Option 1: With Docker (recommended)
+
+Add to your Claude Desktop config file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "proxmox": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--env-file", "<PATH_TO_PROJECT>/.env",
+        "-e", "PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox",
+        "-v", "<PATH_TO_SSH_KEY>:/home/mcp/.ssh/id_proxmox:ro",
+        "proxmox-mcp"
+      ]
+    }
+  }
+}
+```
+
+> **Replace:**
+> - `<PATH_TO_PROJECT>` → Full path to the cloned repository (e.g., `/home/user/proxmox-mcp`)
+> - `<PATH_TO_SSH_KEY>` → Full path to your SSH private key (e.g., `/home/user/.ssh/id_proxmox`)
+
+### Option 2: With Python (local install)
 
 ```json
 {
@@ -136,11 +260,11 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
     "proxmox": {
       "command": "python",
       "args": ["-m", "proxmox_mcp.server"],
-      "cwd": "/path/to/proxmox-mcp",
+      "cwd": "<PATH_TO_PROJECT>",
       "env": {
-        "PROXMOX_HOST": "192.168.1.10",
-        "PROXMOX_TOKEN_ID": "root@pam!mcp",
-        "PROXMOX_TOKEN_SECRET": "your-token-secret",
+        "PROXMOX_HOST": "<YOUR_PROXMOX_IP>",
+        "PROXMOX_TOKEN_ID": "<YOUR_TOKEN_ID>",
+        "PROXMOX_TOKEN_SECRET": "<YOUR_TOKEN_SECRET>",
         "PROXMOX_VERIFY_SSL": "false"
       }
     }
@@ -148,18 +272,11 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-With Docker:
-
-```json
-{
-  "mcpServers": {
-    "proxmox": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "--env-file", "/path/to/.env", "proxmox-mcp"]
-    }
-  }
-}
-```
+> **Replace:**
+> - `<PATH_TO_PROJECT>` → Full path to the cloned repository
+> - `<YOUR_PROXMOX_IP>` → Your Proxmox server IP
+> - `<YOUR_TOKEN_ID>` → Your API token ID (e.g., `root@pam!mcp`)
+> - `<YOUR_TOKEN_SECRET>` → Your API token secret
 
 ---
 
@@ -244,6 +361,33 @@ With Docker:
 | `vm_exec_sync` | Execute command and wait for result |
 | `vm_file_read` | Read file from inside VM |
 | `vm_file_write` | Write file inside VM (protected paths) |
+
+---
+
+## Troubleshooting
+
+### "Connection refused" error
+
+- Check that `PROXMOX_HOST` is correct
+- Verify Proxmox API is accessible: `curl -k https://<YOUR_PROXMOX_IP>:8006/api2/json`
+- Check firewall rules on Proxmox
+
+### "Authentication failed" error
+
+- Verify `PROXMOX_TOKEN_ID` format: `user@realm!tokenname` (e.g., `root@pam!mcp`)
+- Check token secret is correct (no extra spaces)
+- Ensure "Privilege Separation" is **unchecked** on the token
+
+### SSH tools not working
+
+- Check SSH key path is correct in `.env`
+- Verify key is authorized on Proxmox: `ssh -i ~/.ssh/id_proxmox root@<YOUR_PROXMOX_IP>`
+- In Docker, ensure the volume mount path matches `PROXMOX_SSH_KEY_PATH`
+
+### Docker: "permission denied" on SSH key
+
+- Ensure the SSH key file has correct permissions: `chmod 600 ~/.ssh/id_proxmox`
+- The container runs as `mcp` user (UID 1000)
 
 ---
 
