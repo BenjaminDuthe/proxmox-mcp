@@ -69,15 +69,15 @@ If you want to use SSH tools (`ssh_execute`, `ssh_read_file`, etc.):
 
 ```bash
 # Generate a dedicated SSH key
-ssh-keygen -t ed25519 -f ~/.ssh/id_proxmox -N "" -C "proxmox-mcp"
+ssh-keygen -t ed25519 -f ~/.ssh/id_proxmox_mcp -N "" -C "proxmox-mcp"
 
 # Copy the public key to your Proxmox server
-ssh-copy-id -i ~/.ssh/id_proxmox.pub root@<YOUR_PROXMOX_IP>
+ssh-copy-id -i ~/.ssh/id_proxmox_mcp.pub root@<YOUR_PROXMOX_IP>
 ```
 
 Then update `.env`:
 ```env
-PROXMOX_SSH_KEY_PATH=~/.ssh/id_proxmox
+PROXMOX_SSH_KEY_PATH=~/.ssh/id_proxmox_mcp
 ```
 
 ### Step 5: Start with Docker Compose
@@ -138,11 +138,11 @@ services:
 
     environment:
       # Override SSH key path for container filesystem
-      - PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox
+      - PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox_mcp
 
     volumes:
       # Mount your SSH key inside the container (read-only)
-      - ~/.ssh/id_proxmox:/home/mcp/.ssh/id_proxmox:ro
+      - ~/.ssh/id_proxmox_mcp:/home/mcp/.ssh/id_proxmox_mcp:ro
 
     restart: unless-stopped     # Auto-restart on failure
 ```
@@ -167,8 +167,8 @@ docker run --rm -it --env-file .env proxmox-mcp
 # Run with SSH key mounted
 docker run --rm -it \
   --env-file .env \
-  -e PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox \
-  -v ~/.ssh/id_proxmox:/home/mcp/.ssh/id_proxmox:ro \
+  -e PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox_mcp \
+  -v ~/.ssh/id_proxmox_mcp:/home/mcp/.ssh/id_proxmox_mcp:ro \
   proxmox-mcp
 ```
 
@@ -239,8 +239,8 @@ Add to your Claude Desktop config file:
       "args": [
         "run", "--rm", "-i",
         "--env-file", "<PATH_TO_PROJECT>/.env",
-        "-e", "PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox",
-        "-v", "<PATH_TO_SSH_KEY>:/home/mcp/.ssh/id_proxmox:ro",
+        "-e", "PROXMOX_SSH_KEY_PATH=/home/mcp/.ssh/id_proxmox_mcp",
+        "-v", "<PATH_TO_SSH_KEY>:/home/mcp/.ssh/id_proxmox_mcp:ro",
         "proxmox-mcp"
       ]
     }
@@ -250,7 +250,7 @@ Add to your Claude Desktop config file:
 
 > **Replace:**
 > - `<PATH_TO_PROJECT>` → Full path to the cloned repository (e.g., `/home/user/proxmox-mcp`)
-> - `<PATH_TO_SSH_KEY>` → Full path to your SSH private key (e.g., `/home/user/.ssh/id_proxmox`)
+> - `<PATH_TO_SSH_KEY>` → Full path to your SSH private key (e.g., `/home/user/.ssh/id_proxmox_mcp`)
 
 ### Option 2: With Python (local install)
 
@@ -381,12 +381,12 @@ Add to your Claude Desktop config file:
 ### SSH tools not working
 
 - Check SSH key path is correct in `.env`
-- Verify key is authorized on Proxmox: `ssh -i ~/.ssh/id_proxmox root@<YOUR_PROXMOX_IP>`
+- Verify key is authorized on Proxmox: `ssh -i ~/.ssh/id_proxmox_mcp root@<YOUR_PROXMOX_IP>`
 - In Docker, ensure the volume mount path matches `PROXMOX_SSH_KEY_PATH`
 
 ### Docker: "permission denied" on SSH key
 
-- Ensure the SSH key file has correct permissions: `chmod 600 ~/.ssh/id_proxmox`
+- Ensure the SSH key file has correct permissions: `chmod 600 ~/.ssh/id_proxmox_mcp`
 - The container runs as `mcp` user (UID 1000)
 
 ---

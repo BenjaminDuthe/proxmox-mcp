@@ -3,7 +3,7 @@
 from typing import Any
 
 from proxmox_mcp.client import ProxmoxClient
-from proxmox_mcp.exceptions import ProxmoxError
+from proxmox_mcp.exceptions import ErrorCode, ProxmoxError
 
 
 async def list_users(client: ProxmoxClient) -> dict[str, Any]:
@@ -21,17 +21,19 @@ async def list_users(client: ProxmoxClient) -> dict[str, Any]:
 
         users = []
         for user in data:
-            users.append({
-                "userid": user.get("userid"),
-                "email": user.get("email"),
-                "firstname": user.get("firstname"),
-                "lastname": user.get("lastname"),
-                "comment": user.get("comment"),
-                "enable": user.get("enable", 1) == 1,
-                "expire": user.get("expire", 0),
-                "groups": user.get("groups", ""),
-                "realm": user.get("userid", "@").split("@")[-1] if user.get("userid") else "",
-            })
+            users.append(
+                {
+                    "userid": user.get("userid"),
+                    "email": user.get("email"),
+                    "firstname": user.get("firstname"),
+                    "lastname": user.get("lastname"),
+                    "comment": user.get("comment"),
+                    "enable": user.get("enable", 1) == 1,
+                    "expire": user.get("expire", 0),
+                    "groups": user.get("groups", ""),
+                    "realm": user.get("userid", "@").split("@")[-1] if user.get("userid") else "",
+                }
+            )
 
         return {
             "success": True,
@@ -61,7 +63,7 @@ async def get_user(client: ProxmoxClient, userid: str) -> dict[str, Any]:
             return {
                 "success": False,
                 "error": f"Utilisateur '{userid}' introuvable",
-                "error_code": "USER_NOT_FOUND",
+                "error_code": ErrorCode.USER_NOT_FOUND.value,
             }
 
         return {
@@ -118,7 +120,7 @@ async def create_user(
             return {
                 "success": False,
                 "error": "Format userid invalide. Utilisez user@realm (ex: admin@pve, root@pam)",
-                "error_code": "INVALID_FORMAT",
+                "error_code": ErrorCode.INVALID_FORMAT.value,
             }
 
         realm = userid.split("@")[-1]
@@ -128,7 +130,7 @@ async def create_user(
             return {
                 "success": False,
                 "error": "Le mot de passe est requis pour les utilisateurs du realm 'pve'",
-                "error_code": "PASSWORD_REQUIRED",
+                "error_code": ErrorCode.PASSWORD_REQUIRED.value,
             }
 
         # Construire les données
@@ -221,7 +223,7 @@ async def update_user(
             return {
                 "success": False,
                 "error": "Aucune modification spécifiée",
-                "error_code": "NO_CHANGES",
+                "error_code": ErrorCode.NO_CHANGES.value,
             }
 
         await client.put(f"/access/users/{userid}", data)

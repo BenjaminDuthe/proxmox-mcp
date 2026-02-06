@@ -3,13 +3,11 @@
 from typing import Any
 
 from proxmox_mcp.client import ProxmoxClient
-from proxmox_mcp.exceptions import ProxmoxError, VMNotFoundError
+from proxmox_mcp.exceptions import ErrorCode, ProxmoxError, VMNotFoundError
 from proxmox_mcp.models import VMConfig, VMInfo
 
 
-async def list_containers(
-    client: ProxmoxClient, node: str | None = None
-) -> dict[str, Any]:
+async def list_containers(client: ProxmoxClient, node: str | None = None) -> dict[str, Any]:
     """Liste tous les conteneurs LXC du cluster ou d'un nœud spécifique.
 
     Args:
@@ -66,9 +64,7 @@ async def list_containers(
         return e.to_dict()
 
 
-async def get_container_details(
-    client: ProxmoxClient, node: str, vmid: int
-) -> dict[str, Any]:
+async def get_container_details(client: ProxmoxClient, node: str, vmid: int) -> dict[str, Any]:
     """Récupère la configuration détaillée d'un conteneur LXC.
 
     Args:
@@ -135,6 +131,80 @@ async def get_container_details(
         return {
             "success": True,
             "data": result,
+        }
+
+    except ProxmoxError as e:
+        return e.to_dict()
+
+
+async def set_container_config(
+    client: ProxmoxClient,
+    node: str,
+    vmid: int,
+    cores: int | None = None,
+    memory: int | None = None,
+    swap: int | None = None,
+    hostname: str | None = None,
+    description: str | None = None,
+    onboot: bool | None = None,
+    cpulimit: float | None = None,
+    cpuunits: int | None = None,
+) -> dict[str, Any]:
+    """Modifie la configuration d'un conteneur LXC (CPU, RAM, etc.).
+
+    Args:
+        client: Client Proxmox
+        node: Nom du noeud Proxmox
+        vmid: ID du conteneur
+        cores: Nombre de coeurs CPU
+        memory: RAM en MB
+        swap: Swap en MB
+        hostname: Nom d'hote du conteneur
+        description: Description
+        onboot: Demarrer au boot du noeud
+        cpulimit: Limite CPU (0 = illimite)
+        cpuunits: Poids CPU relatif (1024 = defaut)
+
+    Returns:
+        Resultat de la modification
+    """
+    try:
+        data: dict[str, Any] = {}
+
+        if cores is not None:
+            data["cores"] = cores
+        if memory is not None:
+            data["memory"] = memory
+        if swap is not None:
+            data["swap"] = swap
+        if hostname is not None:
+            data["hostname"] = hostname
+        if description is not None:
+            data["description"] = description
+        if onboot is not None:
+            data["onboot"] = 1 if onboot else 0
+        if cpulimit is not None:
+            data["cpulimit"] = cpulimit
+        if cpuunits is not None:
+            data["cpuunits"] = cpuunits
+
+        if not data:
+            return {
+                "success": False,
+                "error": "Aucune modification specifiee",
+                "error_code": ErrorCode.NO_CHANGES.value,
+            }
+
+        await client.put(f"/nodes/{node}/lxc/{vmid}/config", data=data)
+
+        return {
+            "success": True,
+            "message": f"Configuration du conteneur {vmid} modifiee",
+            "data": {
+                "vmid": vmid,
+                "node": node,
+                "changes": data,
+            },
         }
 
     except ProxmoxError as e:

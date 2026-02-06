@@ -20,5 +20,18 @@ services:
     volumes:
       - ~/.ssh/id_proxmox_mcp:/home/mcp/.ssh/id_proxmox_mcp:ro
 
+    # Security
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          memory: 256M
+
     # Restart policy
     restart: unless-stopped

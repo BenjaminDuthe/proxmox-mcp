@@ -249,6 +249,60 @@ TOOLS = [
             "required": ["node", "vmid"],
         },
     ),
+    Tool(
+        name="set_vm_config",
+        description="Modifie la configuration d'une VM QEMU (CPU, RAM, nom, etc.)",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "node": {
+                    "type": "string",
+                    "description": "Nom du noeud Proxmox",
+                },
+                "vmid": {
+                    "type": "integer",
+                    "description": "ID de la VM",
+                },
+                "cores": {
+                    "type": "integer",
+                    "description": "Nombre de coeurs CPU par socket",
+                },
+                "sockets": {
+                    "type": "integer",
+                    "description": "Nombre de sockets CPU",
+                },
+                "memory": {
+                    "type": "integer",
+                    "description": "RAM en MB",
+                },
+                "balloon": {
+                    "type": "integer",
+                    "description": "RAM minimum pour le ballooning en MB (0 = desactive)",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Nom de la VM",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Description",
+                },
+                "onboot": {
+                    "type": "boolean",
+                    "description": "Demarrer au boot du noeud",
+                },
+                "cpulimit": {
+                    "type": "number",
+                    "description": "Limite CPU (0 = illimite)",
+                },
+                "cpuunits": {
+                    "type": "integer",
+                    "description": "Poids CPU relatif (1024 = defaut)",
+                },
+            },
+            "required": ["node", "vmid"],
+        },
+    ),
     # Guest Agent
     Tool(
         name="vm_exec",
@@ -406,6 +460,56 @@ TOOLS = [
                 "vmid": {
                     "type": "integer",
                     "description": "ID du conteneur",
+                },
+            },
+            "required": ["node", "vmid"],
+        },
+    ),
+    Tool(
+        name="set_container_config",
+        description="Modifie la configuration d'un conteneur LXC (CPU, RAM, swap, hostname, etc.)",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "node": {
+                    "type": "string",
+                    "description": "Nom du noeud Proxmox",
+                },
+                "vmid": {
+                    "type": "integer",
+                    "description": "ID du conteneur",
+                },
+                "cores": {
+                    "type": "integer",
+                    "description": "Nombre de coeurs CPU",
+                },
+                "memory": {
+                    "type": "integer",
+                    "description": "RAM en MB",
+                },
+                "swap": {
+                    "type": "integer",
+                    "description": "Swap en MB",
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "Nom d'hote du conteneur",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Description",
+                },
+                "onboot": {
+                    "type": "boolean",
+                    "description": "Demarrer au boot du noeud",
+                },
+                "cpulimit": {
+                    "type": "number",
+                    "description": "Limite CPU (0 = illimite)",
+                },
+                "cpuunits": {
+                    "type": "integer",
+                    "description": "Poids CPU relatif (1024 = defaut)",
                 },
             },
             "required": ["node", "vmid"],
@@ -770,6 +874,11 @@ TOOLS = [
                     "type": "string",
                     "description": "Groupes (séparés par des virgules)",
                 },
+                "expire": {
+                    "type": "integer",
+                    "description": "Timestamp d'expiration (0 = jamais, defaut: 0)",
+                    "default": 0,
+                },
                 "enable": {
                     "type": "boolean",
                     "description": "Activer l'utilisateur (défaut: true)",
@@ -870,9 +979,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             case "list_vms":
                 result = await vms.list_vms(client, arguments.get("node"))
             case "get_vm_details":
-                result = await vms.get_vm_details(
-                    client, arguments["node"], arguments["vmid"]
-                )
+                result = await vms.get_vm_details(client, arguments["node"], arguments["vmid"])
             case "start_vm":
                 result = await vms.start_vm(
                     client,
@@ -908,6 +1015,21 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                     arguments["vmid"],
                     arguments.get("type", "qemu"),
                     arguments.get("purge", True),
+                )
+            case "set_vm_config":
+                result = await vms.set_vm_config(
+                    client,
+                    arguments["node"],
+                    arguments["vmid"],
+                    cores=arguments.get("cores"),
+                    sockets=arguments.get("sockets"),
+                    memory=arguments.get("memory"),
+                    balloon=arguments.get("balloon"),
+                    name=arguments.get("name"),
+                    description=arguments.get("description"),
+                    onboot=arguments.get("onboot"),
+                    cpulimit=arguments.get("cpulimit"),
+                    cpuunits=arguments.get("cpuunits"),
                 )
 
             # Guest Agent
@@ -956,6 +1078,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             case "get_container_details":
                 result = await containers.get_container_details(
                     client, arguments["node"], arguments["vmid"]
+                )
+            case "set_container_config":
+                result = await containers.set_container_config(
+                    client,
+                    arguments["node"],
+                    arguments["vmid"],
+                    cores=arguments.get("cores"),
+                    memory=arguments.get("memory"),
+                    swap=arguments.get("swap"),
+                    hostname=arguments.get("hostname"),
+                    description=arguments.get("description"),
+                    onboot=arguments.get("onboot"),
+                    cpulimit=arguments.get("cpulimit"),
+                    cpuunits=arguments.get("cpuunits"),
                 )
 
             # Snapshots
@@ -1013,9 +1149,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                     arguments.get("vmid"),
                 )
             case "get_task_status":
-                result = await tasks.get_task_status(
-                    client, arguments["node"], arguments["upid"]
-                )
+                result = await tasks.get_task_status(client, arguments["node"], arguments["upid"])
 
             # SSH
             case "ssh_execute":

@@ -42,7 +42,9 @@ ruff format src/
 - `src/proxmox_mcp/client.py` - Async Proxmox API client with dual auth support (token API or user/password with auto-renewal)
 - `src/proxmox_mcp/config.py` - Environment-based configuration via pydantic
 - `src/proxmox_mcp/models.py` - Pydantic models for API inputs/outputs
-- `src/proxmox_mcp/tools/` - Tool implementations organized by domain (nodes, vms, containers, snapshots, storage, tasks, ssh)
+- `src/proxmox_mcp/tools/` - Tool implementations organized by domain (nodes, vms, containers, snapshots, storage, tasks, ssh, users)
+  - `set_vm_config` - Modify QEMU VM configuration (CPU, RAM, name, etc.) via PUT /nodes/{node}/qemu/{vmid}/config
+  - `set_container_config` - Modify LXC container configuration (CPU, RAM, swap, hostname, etc.) via PUT /nodes/{node}/lxc/{vmid}/config
 - `src/proxmox_mcp/ssh_client.py` - Async SSH client using asyncssh for direct node access
 
 ### Authentication Flow
@@ -72,7 +74,7 @@ All tools must return this structure:
 {"success": False, "error": "...", "error_code": "VM_NOT_FOUND"}
 ```
 
-Error codes: `AUTH_FAILED`, `CONNECTION_ERROR`, `NODE_NOT_FOUND`, `VM_NOT_FOUND`, `SNAPSHOT_NOT_FOUND`, `STORAGE_NOT_FOUND`, `PERMISSION_DENIED`, `TASK_FAILED`, `INVALID_STATE`, `API_ERROR`, `SSH_AUTH_FAILED`, `SSH_CONNECTION_ERROR`, `SSH_COMMAND_FAILED`, `SSH_FILE_NOT_FOUND`, `SSH_TIMEOUT`
+Error codes: `AUTH_FAILED`, `CONNECTION_ERROR`, `NODE_NOT_FOUND`, `VM_NOT_FOUND`, `SNAPSHOT_NOT_FOUND`, `STORAGE_NOT_FOUND`, `PERMISSION_DENIED`, `TASK_FAILED`, `INVALID_STATE`, `API_ERROR`, `USER_NOT_FOUND`, `INVALID_FORMAT`, `PASSWORD_REQUIRED`, `NO_CHANGES`, `SSH_AUTH_FAILED`, `SSH_CONNECTION_ERROR`, `SSH_COMMAND_FAILED`, `SSH_FILE_NOT_FOUND`, `SSH_TIMEOUT`
 
 ## Code Conventions
 

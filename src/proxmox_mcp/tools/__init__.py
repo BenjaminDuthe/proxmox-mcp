@@ -3,6 +3,7 @@
 from proxmox_mcp.tools.containers import (
     get_container_details,
     list_containers,
+    set_container_config,
 )
 from proxmox_mcp.tools.nodes import (
     get_node_status,
@@ -14,6 +15,12 @@ from proxmox_mcp.tools.snapshots import (
     list_snapshots,
     rollback_snapshot,
 )
+from proxmox_mcp.tools.ssh import (
+    fix_apt_repos,
+    ssh_execute,
+    ssh_read_file,
+    ssh_write_file,
+)
 from proxmox_mcp.tools.storage import (
     get_storage_content,
     list_storage,
@@ -22,27 +29,22 @@ from proxmox_mcp.tools.tasks import (
     get_task_status,
     list_tasks,
 )
-from proxmox_mcp.tools.vms import (
-    destroy_vm,
-    get_vm_details,
-    list_vms,
-    reboot_vm,
-    shutdown_vm,
-    start_vm,
-    stop_vm,
-)
-from proxmox_mcp.tools.ssh import (
-    fix_apt_repos,
-    ssh_execute,
-    ssh_read_file,
-    ssh_write_file,
-)
 from proxmox_mcp.tools.users import (
     create_user,
     delete_user,
     get_user,
     list_users,
     update_user,
+)
+from proxmox_mcp.tools.vms import (
+    destroy_vm,
+    get_vm_details,
+    list_vms,
+    reboot_vm,
+    set_vm_config,
+    shutdown_vm,
+    start_vm,
+    stop_vm,
 )
 
 __all__ = [
@@ -57,9 +59,11 @@ __all__ = [
     "shutdown_vm",
     "reboot_vm",
     "destroy_vm",
+    "set_vm_config",
     # Containers
     "list_containers",
     "get_container_details",
+    "set_container_config",
     # Snapshots
     "list_snapshots",
     "create_snapshot",

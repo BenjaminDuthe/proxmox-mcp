@@ -270,9 +270,7 @@ class ProxmoxClient:
         """
         return await self.request("GET", path, params=params)
 
-    async def post(
-        self, path: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def post(self, path: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """Effectue une requête POST.
 
         Args:
@@ -284,9 +282,7 @@ class ProxmoxClient:
         """
         return await self.request("POST", path, data=data)
 
-    async def put(
-        self, path: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def put(self, path: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """Effectue une requête PUT.
 
         Args:
@@ -298,16 +294,17 @@ class ProxmoxClient:
         """
         return await self.request("PUT", path, data=data)
 
-    async def delete(self, path: str) -> dict[str, Any]:
+    async def delete(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Effectue une requête DELETE.
 
         Args:
             path: Chemin de l'endpoint
+            params: Paramètres de query string optionnels
 
         Returns:
             Réponse JSON de l'API
         """
-        return await self.request("DELETE", path)
+        return await self.request("DELETE", path, params=params)
 
 
 # Instance globale du client (initialisée par le serveur)
@@ -324,10 +321,7 @@ def get_client() -> ProxmoxClient:
         RuntimeError: Si le client n'est pas initialisé
     """
     if _client is None:
-        raise RuntimeError(
-            "Client Proxmox non initialisé. "
-            "Appelez init_client() d'abord."
-        )
+        raise RuntimeError("Client Proxmox non initialisé. Appelez init_client() d'abord.")
     return _client
 
 

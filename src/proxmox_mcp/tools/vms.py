@@ -3,8 +3,9 @@
 from typing import Any, Literal
 
 from proxmox_mcp.client import ProxmoxClient
-from proxmox_mcp.exceptions import InvalidStateError, ProxmoxError, VMNotFoundError
+from proxmox_mcp.exceptions import ErrorCode, InvalidStateError, ProxmoxError, VMNotFoundError
 from proxmox_mcp.models import VMConfig, VMInfo
+from proxmox_mcp.ssh_client import SSHClient
 
 
 async def list_vms(client: ProxmoxClient, node: str | None = None) -> dict[str, Any]:
@@ -66,9 +67,7 @@ async def list_vms(client: ProxmoxClient, node: str | None = None) -> dict[str, 
         return e.to_dict()
 
 
-async def get_vm_details(
-    client: ProxmoxClient, node: str, vmid: int
-) -> dict[str, Any]:
+async def get_vm_details(client: ProxmoxClient, node: str, vmid: int) -> dict[str, Any]:
     """Récupère la configuration détaillée d'une VM QEMU.
 
     Args:
@@ -180,8 +179,7 @@ async def _vm_action(
 
         if disallowed_states and current_status in disallowed_states:
             raise InvalidStateError(
-                f"Impossible de {action_name} la VM {vmid}: "
-                f"état actuel '{current_status}'"
+                f"Impossible de {action_name} la VM {vmid}: état actuel '{current_status}'"
             )
 
         # Exécuter l'action
@@ -358,7 +356,7 @@ async def destroy_vm(
             params["purge"] = 1
             params["destroy-unreferenced-disks"] = 1
 
-        response = await client.delete(delete_path)
+        response = await client.delete(delete_path, params=params)
         task_id = response.get("data", "")
 
         return {
@@ -437,7 +435,7 @@ async def vm_exec(
 
 
 async def vm_exec_sync(
-    ssh_client: Any,  # SSHClient
+    ssh_client: SSHClient,
     node: str,
     vmid: int,
     command: str,
@@ -677,3 +675,81 @@ async def vm_file_write(
             "error": str(e),
             "error_code": "GUEST_AGENT_ERROR",
         }
+
+
+async def set_vm_config(
+    client: ProxmoxClient,
+    node: str,
+    vmid: int,
+    cores: int | None = None,
+    sockets: int | None = None,
+    memory: int | None = None,
+    balloon: int | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    onboot: bool | None = None,
+    cpulimit: float | None = None,
+    cpuunits: int | None = None,
+) -> dict[str, Any]:
+    """Modifie la configuration d'une VM QEMU (CPU, RAM, etc.).
+
+    Args:
+        client: Client Proxmox
+        node: Nom du noeud Proxmox
+        vmid: ID de la VM
+        cores: Nombre de coeurs CPU par socket
+        sockets: Nombre de sockets CPU
+        memory: RAM en MB
+        balloon: RAM minimum pour le ballooning en MB (0 = desactive)
+        name: Nom de la VM
+        description: Description
+        onboot: Demarrer au boot du noeud
+        cpulimit: Limite CPU (0 = illimite)
+        cpuunits: Poids CPU relatif (1024 = defaut)
+
+    Returns:
+        Resultat de la modification
+    """
+    try:
+        data: dict[str, Any] = {}
+
+        if cores is not None:
+            data["cores"] = cores
+        if sockets is not None:
+            data["sockets"] = sockets
+        if memory is not None:
+            data["memory"] = memory
+        if balloon is not None:
+            data["balloon"] = balloon
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+        if onboot is not None:
+            data["onboot"] = 1 if onboot else 0
+        if cpulimit is not None:
+            data["cpulimit"] = cpulimit
+        if cpuunits is not None:
+            data["cpuunits"] = cpuunits
+
+        if not data:
+            return {
+                "success": False,
+                "error": "Aucune modification specifiee",
+                "error_code": ErrorCode.NO_CHANGES.value,
+            }
+
+        await client.put(f"/nodes/{node}/qemu/{vmid}/config", data=data)
+
+        return {
+            "success": True,
+            "message": f"Configuration de la VM {vmid} modifiee",
+            "data": {
+                "vmid": vmid,
+                "node": node,
+                "changes": data,
+            },
+        }
+
+    except ProxmoxError as e:
+        return e.to_dict()
