@@ -5,6 +5,7 @@ from typing import Any
 from proxmox_mcp.client import ProxmoxClient
 from proxmox_mcp.exceptions import ErrorCode, ProxmoxError, VMNotFoundError
 from proxmox_mcp.models import VMConfig, VMInfo
+from proxmox_mcp.ssh_client import SSHClient
 
 
 async def list_containers(client: ProxmoxClient, node: str | None = None) -> dict[str, Any]:
@@ -209,3 +210,55 @@ async def set_container_config(
 
     except ProxmoxError as e:
         return e.to_dict()
+
+
+async def pct_exec(
+    ssh_client: SSHClient,
+    node: str,
+    vmid: int,
+    command: str,
+    timeout: int = 30,
+) -> dict[str, Any]:
+    """Exécute une commande dans un conteneur LXC via SSH + pct exec.
+
+    Équivalent de `pct exec <vmid> -- <command>` sur le nœud Proxmox.
+    Supporte les commandes shell complètes avec arguments, pipes, redirections, etc.
+
+    Args:
+        ssh_client: Client SSH
+        node: Nom du nœud Proxmox
+        vmid: ID du conteneur LXC
+        command: Commande shell à exécuter dans le conteneur
+        timeout: Timeout en secondes (défaut: 30)
+
+    Returns:
+        Résultat de la commande (stdout, stderr, exit_code)
+    """
+    try:
+        # Échapper les guillemets dans la commande
+        escaped_command = command.replace("'", "'\\''")
+
+        # Utiliser pct exec pour exécuter dans le conteneur LXC
+        ssh_command = f"pct exec {vmid} -- sh -c '{escaped_command}'"
+
+        result = await ssh_client.execute(node, ssh_command, timeout=timeout)
+
+        return {
+            "success": True,
+            "data": {
+                "command": command,
+                "exit_code": result["exit_code"],
+                "stdout": result["stdout"],
+                "stderr": result["stderr"],
+                "duration_ms": result["duration_ms"],
+            },
+            "vmid": vmid,
+            "node": node,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_code": "PCT_EXEC_FAILED",
+        }

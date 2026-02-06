@@ -3,6 +3,7 @@
 from proxmox_mcp.tools.containers import (
     get_container_details,
     list_containers,
+    pct_exec,
     set_container_config,
 )
 from proxmox_mcp.tools.nodes import (
@@ -64,6 +65,7 @@ __all__ = [
     "list_containers",
     "get_container_details",
     "set_container_config",
+    "pct_exec",
     # Snapshots
     "list_snapshots",
     "create_snapshot",

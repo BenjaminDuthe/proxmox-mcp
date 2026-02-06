@@ -515,6 +515,35 @@ TOOLS = [
             "required": ["node", "vmid"],
         },
     ),
+    Tool(
+        name="pct_exec",
+        description="Exécute une commande shell dans un conteneur LXC via pct exec. "
+        "Équivalent de 'pct exec <vmid> -- <command>'. Nécessite SSH. "
+        "Supporte les commandes complexes avec pipes, redirections, etc.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "node": {
+                    "type": "string",
+                    "description": "Nom du nœud Proxmox",
+                },
+                "vmid": {
+                    "type": "integer",
+                    "description": "ID du conteneur LXC",
+                },
+                "command": {
+                    "type": "string",
+                    "description": "Commande shell à exécuter dans le conteneur",
+                },
+                "timeout": {
+                    "type": "integer",
+                    "description": "Timeout en secondes (défaut: 30)",
+                    "default": 30,
+                },
+            },
+            "required": ["node", "vmid", "command"],
+        },
+    ),
     # Snapshots
     Tool(
         name="list_snapshots",
@@ -1092,6 +1121,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                     onboot=arguments.get("onboot"),
                     cpulimit=arguments.get("cpulimit"),
                     cpuunits=arguments.get("cpuunits"),
+                )
+            case "pct_exec":
+                result = await containers.pct_exec(
+                    _get_ssh_client(),
+                    arguments["node"],
+                    arguments["vmid"],
+                    arguments["command"],
+                    arguments.get("timeout", 30),
                 )
 
             # Snapshots

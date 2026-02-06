@@ -467,17 +467,17 @@ async def vm_exec_sync(
 
         result = await ssh_client.execute(node, ssh_command, timeout=timeout)
 
-        if result.exit_code != 0:
+        if result["exit_code"] != 0:
             return {
                 "success": False,
-                "error": result.stderr or f"Command failed with exit code {result.exit_code}",
+                "error": result["stderr"] or f"Command failed with exit code {result['exit_code']}",
                 "error_code": "GUEST_EXEC_FAILED",
                 "vmid": vmid,
             }
 
         # Parser le JSON retourné par qm guest exec
         try:
-            output = json_module.loads(result.stdout)
+            output = json_module.loads(result["stdout"])
             return {
                 "success": True,
                 "exited": output.get("exited", False),
@@ -489,8 +489,8 @@ async def vm_exec_sync(
         except json_module.JSONDecodeError:
             return {
                 "success": True,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
+                "stdout": result["stdout"],
+                "stderr": result["stderr"],
                 "vmid": vmid,
             }
 
