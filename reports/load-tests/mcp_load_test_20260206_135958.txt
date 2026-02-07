@@ -1,0 +1,36 @@
+================================================================
+   MCP PROXMOX - LOAD TEST REPORT (stdio)
+   Date: 2026-02-06 13:59
+   Profil: standard
+   Workers: 5 | Req/worker: 10 | Duree: 1.2s
+================================================================
+
+## Resume Executif
+  Total Requests:    50
+  Total Failures:    0 (0.00%)
+  Avg Response Time: 69ms
+  RPS:               41.3
+  Workers OK:        5/5
+
+## Process Lifecycle
+  Spawn  - p50: 7ms | p95: 9ms | p99: 9ms
+  Init   - p50: 414ms | p95: 451ms | p99: 454ms
+
+## Metriques par Endpoint
+
+Endpoint                   Reqs     Errs      p50      p95      p99      Max Status
+-----------------------------------------------------------------------------------
+list_containers              10   0 (0%)     211ms    415ms    452ms    461ms    OK 
+list_nodes                   10   0 (0%)      18ms     22ms     23ms     23ms    OK 
+list_users                   10   0 (0%)      21ms     84ms    110ms    117ms    OK 
+list_vms                     10   0 (0%)      18ms    109ms    168ms    183ms    OK 
+tools/list                   10   0 (0%)       1ms      2ms      3ms      3ms    OK 
+
+## Anomalies Detectees
+  Aucune anomalie detectee.
+
+## Recommandations
+  1. Tous les tests passent - le serveur MCP est stable
+  2. Envisager un test stress (--stress) pour trouver les limites
+
+================================================================

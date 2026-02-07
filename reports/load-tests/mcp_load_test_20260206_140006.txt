@@ -1,0 +1,41 @@
+================================================================
+   MCP PROXMOX - LOAD TEST REPORT (stdio)
+   Date: 2026-02-06 14:00
+   Profil: stress
+   Workers: 10 | Req/worker: 20 | Duree: 3.7s
+================================================================
+
+## Resume Executif
+  Total Requests:    200
+  Total Failures:    0 (0.00%)
+  Avg Response Time: 123ms
+  RPS:               53.7
+  Workers OK:        10/10
+
+## Process Lifecycle
+  Spawn  - p50: 68ms | p95: 74ms | p99: 75ms
+  Init   - p50: 748ms | p95: 778ms | p99: 785ms
+
+## Metriques par Endpoint
+
+Endpoint                   Reqs     Errs      p50      p95      p99      Max Status
+-----------------------------------------------------------------------------------
+list_containers              40   0 (0%)     281ms    913ms   1057ms   1090ms    OK 
+list_nodes                   40   0 (0%)      20ms     28ms     50ms     61ms    OK 
+list_users                   40   0 (0%)      26ms    400ms    781ms    947ms    OK 
+list_vms                     40   0 (0%)      23ms    223ms    479ms    535ms    OK 
+tools/list                   40   0 (0%)       2ms      6ms     12ms     14ms    OK 
+
+## Anomalies Detectees
+
+### WARNING
+  - [list_vms] Ratio p99/p50 = 20.4x (seuil: 10x)
+    Recommandation: Forte variance de latence, possible contention
+  - [list_users] Ratio p99/p50 = 29.6x (seuil: 10x)
+    Recommandation: Forte variance de latence, possible contention
+
+## Recommandations
+  1. Surveiller les warnings ci-dessus
+  2. Envisager un test d'endurance (--soak) pour confirmer la stabilite
+
+================================================================
