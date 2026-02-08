@@ -1,6 +1,29 @@
-# CLAUDE.md
+# CLAUDE.md - MCP Proxmox
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## REGLE ABSOLUE : Wiki-First
+
+**AVANT de lire du code source, TOUJOURS consulter le Wiki (7 pages) :**
+
+```
+wikijs_get_page(path="MCP-Proxmox")                            # Index + sommaire
+wikijs_get_page(path="MCP-Proxmox/<page>")                     # Page specifique
+wikijs_search_pages(query="MCP-Proxmox <sujet>")               # Recherche
+```
+
+**INTERDIT** : Glob/Grep/Read pour "explorer" l'architecture. Utiliser UNIQUEMENT pour les fichiers a modifier.
+
+---
+
+## REGLE ABSOLUE : Vaultwarden comme coffre-fort unique
+
+**Tous les secrets (mots de passe, tokens, API keys) sont centralises dans Vaultwarden** (organisation `SiteCraft`, `https://vault.sitecraft-it.com`).
+
+- **JAMAIS de secrets en clair** dans CLAUDE.md, MEMORY.md ou le code
+- **Avant chaque tache necessitant un secret** : le recuperer depuis Vaultwarden
+- **Apres chaque creation/modification de secret** : mettre a jour l'item Vaultwarden dans la collection du projet
+- **Les .env restent le mecanisme d'execution** — Vaultwarden est la source de verite
+
+---
 
 ## Project Overview
 
