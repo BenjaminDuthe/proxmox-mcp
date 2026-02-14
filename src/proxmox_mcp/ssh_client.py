@@ -63,8 +63,7 @@ class SSHClient:
     def _get_host_for_node(self, node: str) -> str:
         """Détermine l'hôte SSH pour un nœud.
 
-        Pour simplifier, utilise le host Proxmox principal.
-        En production, on pourrait résoudre via l'API Proxmox.
+        Utilise le mapping node_ips si configuré, sinon le host principal.
 
         Args:
             node: Nom du nœud
@@ -72,8 +71,8 @@ class SSHClient:
         Returns:
             Adresse IP ou hostname pour SSH
         """
-        # TODO: Résoudre dynamiquement via /nodes/{node}/status
-        # Pour l'instant, utilise le host principal
+        if self.config.node_ips and node in self.config.node_ips:
+            return self.config.node_ips[node]
         return self.config.host
 
     async def _get_connection(self, node: str) -> asyncssh.SSHClientConnection:

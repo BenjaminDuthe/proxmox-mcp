@@ -70,6 +70,8 @@ class ProxmoxConfig(BaseModel):
     password: str | None = None
     # SSH config
     ssh: SSHConfig = SSHConfig()
+    # Mapping node name -> IP for multi-node SSH
+    node_ips: dict[str, str] = {}
 
     @field_validator("host")
     @classmethod
@@ -138,6 +140,15 @@ def get_config() -> ProxmoxConfig:
         timeout=int(os.environ.get("PROXMOX_SSH_TIMEOUT", "30")),
     )
 
+    # Parse node IPs mapping (format: "node1:ip1,node2:ip2")
+    node_ips: dict[str, str] = {}
+    node_ips_str = os.environ.get("PROXMOX_NODE_IPS", "")
+    if node_ips_str:
+        for pair in node_ips_str.split(","):
+            if ":" in pair:
+                name, ip = pair.split(":", 1)
+                node_ips[name.strip()] = ip.strip()
+
     return ProxmoxConfig(
         host=os.environ.get("PROXMOX_HOST", ""),
         port=int(os.environ.get("PROXMOX_PORT", "8006")),
@@ -148,4 +159,5 @@ def get_config() -> ProxmoxConfig:
         user=os.environ.get("PROXMOX_USER"),
         password=os.environ.get("PROXMOX_PASSWORD"),
         ssh=ssh_config,
+        node_ips=node_ips,
     )
