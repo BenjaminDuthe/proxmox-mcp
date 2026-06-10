@@ -303,6 +303,51 @@ TOOLS = [
             "required": ["node", "vmid"],
         },
     ),
+    Tool(
+        name="clone_vm",
+        description="Clone une VM ou un template QEMU. "
+        "Crée une nouvelle VM à partir d'une VM source (template ou VM arrêtée). "
+        "Supporte le choix du nœud cible et du stockage.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "node": {
+                    "type": "string",
+                    "description": "Nom du nœud source",
+                },
+                "vmid": {
+                    "type": "integer",
+                    "description": "ID de la VM/template source à cloner",
+                },
+                "newid": {
+                    "type": "integer",
+                    "description": "ID de la nouvelle VM (doit être unique)",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Nom de la nouvelle VM (optionnel)",
+                },
+                "target": {
+                    "type": "string",
+                    "description": "Nœud cible pour le clone (optionnel, défaut: même nœud)",
+                },
+                "storage": {
+                    "type": "string",
+                    "description": "Stockage cible (optionnel, défaut: même que la source)",
+                },
+                "full": {
+                    "type": "boolean",
+                    "description": "Clone complet (True, défaut) ou linked clone (False)",
+                    "default": True,
+                },
+                "pool": {
+                    "type": "string",
+                    "description": "Pool auquel ajouter la VM (optionnel)",
+                },
+            },
+            "required": ["node", "vmid", "newid"],
+        },
+    ),
     # Guest Agent
     Tool(
         name="vm_exec",
@@ -1059,6 +1104,18 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                     onboot=arguments.get("onboot"),
                     cpulimit=arguments.get("cpulimit"),
                     cpuunits=arguments.get("cpuunits"),
+                )
+            case "clone_vm":
+                result = await vms.clone_vm(
+                    client,
+                    arguments["node"],
+                    arguments["vmid"],
+                    arguments["newid"],
+                    name=arguments.get("name"),
+                    target=arguments.get("target"),
+                    storage=arguments.get("storage"),
+                    full=arguments.get("full", True),
+                    pool=arguments.get("pool"),
                 )
 
             # Guest Agent

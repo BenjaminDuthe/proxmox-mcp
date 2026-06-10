@@ -38,6 +38,7 @@ from proxmox_mcp.tools.users import (
     update_user,
 )
 from proxmox_mcp.tools.vms import (
+    clone_vm,
     destroy_vm,
     get_vm_details,
     list_vms,
@@ -53,6 +54,7 @@ __all__ = [
     "list_nodes",
     "get_node_status",
     # VMs
+    "clone_vm",
     "list_vms",
     "get_vm_details",
     "start_vm",

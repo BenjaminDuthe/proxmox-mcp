@@ -677,6 +677,76 @@ async def vm_file_write(
         }
 
 
+async def clone_vm(
+    client: ProxmoxClient,
+    node: str,
+    vmid: int,
+    newid: int,
+    name: str | None = None,
+    target: str | None = None,
+    storage: str | None = None,
+    full: bool = True,
+    pool: str | None = None,
+) -> dict[str, Any]:
+    """Clone une VM ou un template QEMU.
+
+    Args:
+        client: Client Proxmox
+        node: Nom du nœud source
+        vmid: ID de la VM/template source
+        newid: ID de la nouvelle VM (doit être unique)
+        name: Nom de la nouvelle VM (optionnel)
+        target: Nœud cible pour le clone (optionnel, défaut: même nœud)
+        storage: Stockage cible (optionnel, défaut: même que la source)
+        full: Clone complet (True) ou linked clone (False). Défaut True.
+        pool: Pool auquel ajouter la VM (optionnel)
+
+    Returns:
+        Résultat avec task_id
+    """
+    try:
+        # Vérifier que la VM source existe
+        status_path = f"/nodes/{node}/qemu/{vmid}/status/current"
+        status_response = await client.get(status_path)
+        status_data = status_response.get("data")
+
+        if status_data is None:
+            raise VMNotFoundError(vmid, node)
+
+        # Construire les paramètres du clone
+        data: dict[str, Any] = {"newid": newid}
+
+        if name is not None:
+            data["name"] = name
+        if target is not None:
+            data["target"] = target
+        if storage is not None:
+            data["storage"] = storage
+        if full:
+            data["full"] = 1
+        if pool is not None:
+            data["pool"] = pool
+
+        response = await client.post(
+            f"/nodes/{node}/qemu/{vmid}/clone",
+            data=data,
+        )
+
+        task_id = response.get("data", "")
+
+        return {
+            "success": True,
+            "message": f"Clone de {vmid} vers {newid} lancé",
+            "task_id": task_id,
+            "vmid": newid,
+            "source_vmid": vmid,
+            "node": target or node,
+        }
+
+    except ProxmoxError as e:
+        return e.to_dict()
+
+
 async def set_vm_config(
     client: ProxmoxClient,
     node: str,
