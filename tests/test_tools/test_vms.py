@@ -118,8 +118,13 @@ class TestGetVMDetails:
 
     @pytest.mark.asyncio
     async def test_get_vm_details_not_found(self, mock_client: ProxmoxClient) -> None:
-        """get_vm_details retourne une erreur si la VM n'existe pas."""
-        mock_client.get = AsyncMock(return_value={"data": None, "_status": 404})
+        """get_vm_details retourne VM_NOT_FOUND si Proxmox retourne une erreur 'does not exist'."""
+        from proxmox_mcp.exceptions import ProxmoxError
+        mock_client.get = AsyncMock(
+            side_effect=ProxmoxError(
+                "Configuration file 'nodes/pve1/qemu-server/999.conf' does not exist"
+            )
+        )
 
         result = await get_vm_details(mock_client, "pve1", 999)
 
