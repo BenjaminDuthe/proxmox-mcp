@@ -80,7 +80,13 @@ async def get_vm_details(client: ProxmoxClient, node: str, vmid: int) -> dict[st
     """
     try:
         # Récupérer la config
-        config_response = await client.get(f"/nodes/{node}/qemu/{vmid}/config")
+        try:
+            config_response = await client.get(f"/nodes/{node}/qemu/{vmid}/config")
+        except ProxmoxError as e:
+            # Proxmox returns HTTP 500 (not 404) when a VM config file is missing
+            if "does not exist" in str(e) or "configuration file" in str(e).lower():
+                raise VMNotFoundError(vmid, node)
+            raise
         config_data = config_response.get("data")
 
         if config_data is None:
